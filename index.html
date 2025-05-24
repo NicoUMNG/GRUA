@@ -3,42 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Motores ESP32 - WiFi</title>
+    <title>Control ESP32 - Redirección</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
             padding: 20px;
         }
         
         .container {
-            max-width: 400px;
-            margin: 0 auto;
             background: white;
             border-radius: 20px;
-            padding: 30px;
+            padding: 40px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
         }
         
         h1 {
-            text-align: center;
             color: #333;
-            margin-bottom: 30px;
-            font-size: 24px;
+            margin-bottom: 20px;
         }
         
-        .connection-section {
-            background: #e3f2fd;
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
             border-radius: 10px;
             padding: 20px;
-            margin-bottom: 30px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        
+        .info {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #1565c0;
         }
         
         .ip-input {
@@ -46,555 +54,107 @@
             padding: 15px;
             border: 2px solid #ddd;
             border-radius: 10px;
-            font-size: 16px;
-            margin-bottom: 15px;
+            font-size: 18px;
+            margin: 20px 0;
+            text-align: center;
         }
         
-        .connect-btn {
-            width: 100%;
-            padding: 15px;
+        .btn {
             background: #4CAF50;
             color: white;
             border: none;
+            padding: 15px 30px;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             cursor: pointer;
+            width: 100%;
             transition: all 0.3s ease;
         }
         
-        .connect-btn:hover {
+        .btn:hover {
             background: #45a049;
             transform: translateY(-2px);
         }
         
-        .connect-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .status {
-            text-align: center;
-            padding: 15px;
+        .instructions {
+            background: #f5f5f5;
             border-radius: 10px;
-            margin-bottom: 30px;
-            font-weight: bold;
-        }
-        
-        .disconnected {
-            background: #ffebee;
-            color: #c62828;
-        }
-        
-        .connected {
-            background: #e8f5e8;
-            color: #2e7d32;
-        }
-        
-        .connecting {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .motor-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .motor-control {
-            text-align: center;
             padding: 20px;
-            border: 2px solid #eee;
-            border-radius: 15px;
-            transition: all 0.3s ease;
+            margin-top: 30px;
+            text-align: left;
         }
         
-        .motor-control.active {
-            border-color: #4CAF50;
-            background: #f8fff8;
-        }
-        
-        .motor-name {
-            font-weight: bold;
+        .instructions h3 {
             margin-bottom: 10px;
             color: #333;
         }
         
-        .motor-btn {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: none;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 5px;
-        }
-        
-        .motor-btn.on {
-            background: #4CAF50;
-            color: white;
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-        }
-        
-        .motor-btn.off {
-            background: #f44336;
-            color: white;
-            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
-        }
-        
-        .motor-btn:hover {
-            transform: scale(1.05);
-        }
-        
-        .motor-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .global-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .global-btn {
-            flex: 1;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .all-on {
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .all-off {
-            background: #f44336;
-            color: white;
-        }
-        
-        .global-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        
-        .global-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .instructions {
-            background: #e3f2fd;
-            border-radius: 10px;
-            padding: 20px;
-            font-size: 14px;
-            color: #1565c0;
-        }
-        
-        .instructions h4 {
-            margin-bottom: 10px;
-        }
-        
         .instructions ol {
             margin-left: 20px;
+            color: #666;
         }
         
         .instructions li {
-            margin-bottom: 5px;
-        }
-
-        .debug-info {
-            background: #f0f0f0;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            font-size: 12px;
-            font-family: monospace;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .warning-box {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            color: #856404;
-        }
-
-        .iframe-container {
-            display: none;
-            width: 100%;
-            height: 400px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            margin-top: 20px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚗 Control de Motores WiFi</h1>
+        <h1>🚗 Control de Motores ESP32</h1>
         
-        <div class="warning-box" id="corsWarning" style="display: none;">
-            <strong>⚠️ Problema de CORS detectado</strong><br>
-            Para solucionar esto:<br>
-            1. Abre directamente http://<span id="espIPWarning"></span> en tu navegador<br>
-            2. O usa la extensión de Chrome "Allow CORS"<br>
-            3. O sirve este archivo desde un servidor web local
+        <div class="warning">
+            <strong>⚠️ Atención:</strong><br>
+            GitHub Pages usa HTTPS y no puede conectarse directamente a dispositivos HTTP locales como el ESP32.
         </div>
         
-        <div class="connection-section">
-            <h3 style="color: #1565c0; margin-bottom: 15px;">📶 Conexión WiFi</h3>
-            <input type="text" 
-                   class="ip-input" 
-                   id="espIP" 
-                   placeholder="192.168.1.100" 
-                   value="192.168.0.33">
-            <button class="connect-btn" id="connectBtn" onclick="testConnection()">
-                Conectar al ESP32
-            </button>
+        <div class="info">
+            <strong>💡 Solución:</strong><br>
+            Debes acceder directamente al ESP32 desde tu red local.
         </div>
         
-        <div id="status" class="status disconnected">
-            Desconectado
-        </div>
+        <input type="text" 
+               id="espIP" 
+               class="ip-input" 
+               placeholder="192.168.1.100" 
+               value="192.168.0.33">
         
-        <div class="motor-grid">
-            <div class="motor-control" id="motor1">
-                <div class="motor-name">Motor 1 (Pin 26)</div>
-                <button class="motor-btn off" onclick="toggleMotor(1)">OFF</button>
-            </div>
-            
-            <div class="motor-control" id="motor2">
-                <div class="motor-name">Motor 2 (Pin 25)</div>
-                <button class="motor-btn off" onclick="toggleMotor(2)">OFF</button>
-            </div>
-            
-            <div class="motor-control" id="motor3">
-                <div class="motor-name">Motor 3 (Pin 33)</div>
-                <button class="motor-btn off" onclick="toggleMotor(3)">OFF</button>
-            </div>
-            
-            <div class="motor-control" id="motor4">
-                <div class="motor-name">Motor 4 (Pin 32)</div>
-                <button class="motor-btn off" onclick="toggleMotor(4)">OFF</button>
-            </div>
-        </div>
-        
-        <div class="global-controls">
-            <button class="global-btn all-on" onclick="allMotors('ON')">
-                Todos ON
-            </button>
-            <button class="global-btn all-off" onclick="allMotors('OFF')">
-                Todos OFF
-            </button>
-        </div>
+        <button class="btn" onclick="goToESP32()">
+            Ir al Panel de Control
+        </button>
         
         <div class="instructions">
-            <h4>📋 Instrucciones:</h4>
+            <h3>📋 Instrucciones:</h3>
             <ol>
-                <li>Verifica que el ESP32 esté conectado a la red WiFi</li>
-                <li>Confirma la IP en el Monitor Serie</li>
-                <li>Si no funciona, prueba estas opciones:</li>
-                <ul>
-                    <li>Abre http://192.168.0.33 directamente en el navegador</li>
-                    <li>Deshabilita temporalmente el firewall</li>
-                    <li>Usa Chrome o Firefox (evita Safari)</li>
-                    <li>Sirve este archivo desde un servidor web</li>
-                </ul>
+                <li>Asegúrate de que el ESP32 esté encendido y conectado a tu WiFi</li>
+                <li>Verifica la IP del ESP32 en el Monitor Serie de Arduino</li>
+                <li>Ingresa la IP en el campo de arriba</li>
+                <li>Presiona el botón para ir al panel de control</li>
+                <li>Si no funciona, copia la IP y pégala directamente en tu navegador</li>
             </ol>
-        </div>
-
-        <div id="debugInfo" class="debug-info">
-            <strong>Debug Info:</strong><br>
-            <div id="debugLog"></div>
-        </div>
-
-        <iframe id="testFrame" class="iframe-container"></iframe>
-    </div>
-
-    <script>
-        let isConnected = false;
-        let espIP = '';
-        
-        const motorStates = {
-            1: false,
-            2: false,
-            3: false,
-            4: false
-        };
-
-        function addDebugLog(message) {
-            const debugLog = document.getElementById('debugLog');
-            const timestamp = new Date().toLocaleTimeString();
-            debugLog.innerHTML += `[${timestamp}] ${message}<br>`;
-            debugLog.scrollTop = debugLog.scrollHeight;
-        }
-
-        // Detectar si estamos en file:// o http://
-        addDebugLog(`Protocolo actual: ${window.location.protocol}`);
-        if (window.location.protocol === 'file:') {
-            addDebugLog('⚠️ Abriendo desde archivo local - posibles problemas de CORS');
-        }
-        
-        async function testConnection() {
-            const ip = document.getElementById('espIP').value.trim();
-            const status = document.getElementById('status');
-            const connectBtn = document.getElementById('connectBtn');
             
+            <h3>🔧 Alternativa:</h3>
+            <p>Si tienes problemas, puedes cargar el código modificado que incluye el HTML directamente en el ESP32 (sin necesidad de GitHub Pages).</p>
+        </div>
+    </div>
+    
+    <script>
+        function goToESP32() {
+            const ip = document.getElementById('espIP').value.trim();
             if (!ip) {
                 alert('Por favor ingresa la IP del ESP32');
                 return;
             }
             
-            connectBtn.disabled = true;
-            connectBtn.textContent = 'Conectando...';
-            status.textContent = 'Probando conexión...';
-            status.className = 'status connecting';
-            
-            addDebugLog(`Intentando conectar a: ${ip}`);
-            
-            // Método 1: Intentar fetch directo
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                
-                const response = await fetch(`http://${ip}/status`, {
-                    method: 'GET',
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                
-                if (response.ok) {
-                    const responseText = await response.text();
-                    addDebugLog(`✅ Conexión exitosa! Datos: ${responseText}`);
-                    
-                    espIP = ip;
-                    isConnected = true;
-                    status.textContent = `✅ Conectado a ${ip}`;
-                    status.className = 'status connected';
-                    connectBtn.textContent = 'Desconectar';
-                    connectBtn.onclick = disconnect;
-                    
-                    enableControls(true);
-                    parseStatus(responseText);
-                    
-                    document.getElementById('corsWarning').style.display = 'none';
-                }
-                
-            } catch (error) {
-                addDebugLog(`❌ Error en método 1: ${error.message}`);
-                
-                // Método 2: Intentar con XMLHttpRequest
-                addDebugLog('Intentando método alternativo con XMLHttpRequest...');
-                
-                const xhr = new XMLHttpRequest();
-                xhr.timeout = 5000;
-                
-                xhr.onload = function() {
-                    if (xhr.status === 200) {
-                        addDebugLog(`✅ Conexión exitosa con XHR! Datos: ${xhr.responseText}`);
-                        
-                        espIP = ip;
-                        isConnected = true;
-                        status.textContent = `✅ Conectado a ${ip}`;
-                        status.className = 'status connected';
-                        connectBtn.textContent = 'Desconectar';
-                        connectBtn.onclick = disconnect;
-                        
-                        enableControls(true);
-                        parseStatus(xhr.responseText);
-                        
-                        document.getElementById('corsWarning').style.display = 'none';
-                    } else {
-                        showConnectionError(ip);
-                    }
-                };
-                
-                xhr.onerror = function() {
-                    addDebugLog('❌ Error con XMLHttpRequest');
-                    showConnectionError(ip);
-                };
-                
-                xhr.ontimeout = function() {
-                    addDebugLog('❌ Timeout con XMLHttpRequest');
-                    showConnectionError(ip);
-                };
-                
-                try {
-                    xhr.open('GET', `http://${ip}/status`, true);
-                    xhr.send();
-                } catch (e) {
-                    addDebugLog(`❌ Error abriendo XHR: ${e.message}`);
-                    showConnectionError(ip);
-                }
-            }
-            
-            connectBtn.disabled = false;
+            // Intentar abrir en la misma ventana
+            window.location.href = `http://${ip}`;
         }
         
-        function showConnectionError(ip) {
-            const status = document.getElementById('status');
-            const connectBtn = document.getElementById('connectBtn');
-            
-            status.textContent = '❌ Error de conexión - Ver debug';
-            status.className = 'status disconnected';
-            connectBtn.textContent = 'Reintentar';
-            enableControls(false);
-            
-            // Mostrar advertencia de CORS
-            document.getElementById('corsWarning').style.display = 'block';
-            document.getElementById('espIPWarning').textContent = ip;
-            
-            addDebugLog('💡 SOLUCIONES SUGERIDAS:');
-            addDebugLog('1. Abre http://' + ip + ' en una nueva pestaña');
-            addDebugLog('2. Usa python -m http.server para servir este archivo');
-            addDebugLog('3. Deshabilita temporalmente el firewall');
-            addDebugLog('4. Verifica que ambos dispositivos estén en la misma red');
-        }
-        
-        function disconnect() {
-            isConnected = false;
-            espIP = '';
-            
-            document.getElementById('status').textContent = 'Desconectado';
-            document.getElementById('status').className = 'status disconnected';
-            document.getElementById('connectBtn').textContent = 'Conectar al ESP32';
-            document.getElementById('connectBtn').onclick = testConnection;
-            
-            enableControls(false);
-            addDebugLog('Desconectado manualmente');
-        }
-        
-        async function sendCommand(command) {
-            if (!isConnected || !espIP) {
-                addDebugLog('Error: No hay conexión activa');
-                return false;
-            }
-            
-            addDebugLog(`Enviando comando: ${command}`);
-            
-            // Usar XMLHttpRequest para mejor compatibilidad
-            return new Promise((resolve) => {
-                const xhr = new XMLHttpRequest();
-                xhr.timeout = 3000;
-                
-                xhr.onload = function() {
-                    if (xhr.status === 200) {
-                        addDebugLog(`✅ Comando enviado: ${xhr.responseText}`);
-                        resolve(true);
-                    } else {
-                        addDebugLog(`❌ Error HTTP: ${xhr.status}`);
-                        resolve(false);
-                    }
-                };
-                
-                xhr.onerror = function() {
-                    addDebugLog('❌ Error enviando comando');
-                    resolve(false);
-                };
-                
-                xhr.ontimeout = function() {
-                    addDebugLog('❌ Timeout enviando comando');
-                    resolve(false);
-                };
-                
-                try {
-                    xhr.open('POST', `http://${espIP}/command`, true);
-                    xhr.setRequestHeader('Content-Type', 'text/plain');
-                    xhr.send(command);
-                } catch (e) {
-                    addDebugLog(`❌ Error: ${e.message}`);
-                    resolve(false);
-                }
-            });
-        }
-        
-        function parseStatus(statusString) {
-            addDebugLog(`Parseando estado: ${statusString}`);
-            
-            try {
-                const states = statusString.split(',');
-                states.forEach(state => {
-                    const [motor, status] = state.split(':');
-                    if (motor && status) {
-                        const motorNum = parseInt(motor.replace('M', ''));
-                        const isOn = status.trim() === 'ON';
-                        updateMotorUI(motorNum, isOn);
-                    }
-                });
-            } catch (error) {
-                addDebugLog(`Error parseando estado: ${error.message}`);
-            }
-        }
-        
-        async function toggleMotor(motorNum) {
-            const currentState = motorStates[motorNum];
-            const newState = !currentState;
-            const command = `M${motorNum}_${newState ? 'ON' : 'OFF'}`;
-            
-            const success = await sendCommand(command);
-            if (success) {
-                updateMotorUI(motorNum, newState);
-            }
-        }
-        
-        async function allMotors(state) {
-            const success = await sendCommand(`ALL_${state}`);
-            if (success) {
-                for (let i = 1; i <= 4; i++) {
-                    updateMotorUI(i, state === 'ON');
-                }
-            }
-        }
-        
-        function updateMotorUI(motorNum, isOn) {
-            motorStates[motorNum] = isOn;
-            
-            const motorControl = document.getElementById(`motor${motorNum}`);
-            const button = motorControl.querySelector('.motor-btn');
-            
-            if (isOn) {
-                button.className = 'motor-btn on';
-                button.textContent = 'ON';
-                motorControl.classList.add('active');
-            } else {
-                button.className = 'motor-btn off';
-                button.textContent = 'OFF';
-                motorControl.classList.remove('active');
-            }
-        }
-        
-        function enableControls(enabled) {
-            const buttons = document.querySelectorAll('.motor-btn, .global-btn');
-            buttons.forEach(btn => btn.disabled = !enabled);
-        }
-        
-        // Inicializar controles deshabilitados
-        enableControls(false);
-        
-        // Auto-intentar conexión al cargar
-        window.addEventListener('load', () => {
-            addDebugLog('Página cargada - listo para conectar');
-            // Si hay una IP predefinida, intentar conectar automáticamente
-            if (document.getElementById('espIP').value) {
-                addDebugLog('IP predefinida encontrada, intentando conexión automática en 1 segundo...');
-                setTimeout(testConnection, 1000);
+        // Permitir presionar Enter para ir
+        document.getElementById('espIP').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                goToESP32();
             }
         });
     </script>
