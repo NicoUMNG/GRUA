@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Motores ESP32</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+        
+        .disconnected {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .connected {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        
+        .connect-btn {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .connect-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .connect-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .motor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .motor-control {
+            text-align: center;
+            padding: 20px;
+            border: 2px solid #eee;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .motor-control.active {
+            border-color: #4CAF50;
+            background: #f8fff8;
+        }
+        
+        .motor-name {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .motor-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .motor-btn.on {
+            background: #4CAF50;
+            color: white;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+        
+        .motor-btn.off {
+            background: #f44336;
+            color: white;
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+        }
+        
+        .motor-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .motor-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .global-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .global-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .all-on {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .all-off {
+            background: #f44336;
+            color: white;
+        }
+        
+        .global-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .global-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .note {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Control de Motores</h1>
+        
+        <div id="status" class="status disconnected">
+            Desconectado
+        </div>
+        
+        <button id="connectBtn" class="connect-btn">
+            Conectar Bluetooth
+        </button>
+        
+        <div class="motor-grid">
+            <div class="motor-control" id="motor1">
+                <div class="motor-name">Motor 1 (Pin 26)</div>
+                <button class="motor-btn off" onclick="toggleMotor(1)">OFF</button>
+            </div>
+            
+            <div class="motor-control" id="motor2">
+                <div class="motor-name">Motor 2 (Pin 25)</div>
+                <button class="motor-btn off" onclick="toggleMotor(2)">OFF</button>
+            </div>
+            
+            <div class="motor-control" id="motor3">
+                <div class="motor-name">Motor 3 (Pin 33)</div>
+                <button class="motor-btn off" onclick="toggleMotor(3)">OFF</button>
+            </div>
+            
+            <div class="motor-control" id="motor4">
+                <div class="motor-name">Motor 4 (Pin 32)</div>
+                <button class="motor-btn off" onclick="toggleMotor(4)">OFF</button>
+            </div>
+        </div>
+        
+        <div class="global-controls">
+            <button class="global-btn all-on" onclick="allMotors('ON')">
+                Todos ON
+            </button>
+            <button class="global-btn all-off" onclick="allMotors('OFF')">
+                Todos OFF
+            </button>
+        </div>
+        
+        <div class="note">
+            <strong>Nota:</strong> Esta aplicación usa BLE (Bluetooth Low Energy) y funciona perfectamente en iPhone con Safari o Chrome. También en Android con Chrome.
+        </div>
+    </div>
+
+    <script>
+        let device;
+        let characteristic;
+        let isConnected = false;
+        
+        const motorStates = {
+            1: false,
+            2: false,
+            3: false,
+            4: false
+        };
+        
+        document.getElementById('connectBtn').addEventListener('click', connect);
+        
+        async function connect() {
+            try {
+                const connectBtn = document.getElementById('connectBtn');
+                const status = document.getElementById('status');
+                
+                connectBtn.disabled = true;
+                connectBtn.textContent = 'Conectando...';
+                
+                // Buscar dispositivo BLE
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'ESP32_Motors_BLE' }],
+                    optionalServices: ['12345678-1234-1234-1234-123456789abc']
+                });
+                
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789abc');
+                characteristic = await service.getCharacteristic('87654321-4321-4321-4321-cba987654321');
+                
+                // Habilitar notificaciones
+                await characteristic.startNotifications();
+                characteristic.addEventListener('characteristicvaluechanged', handleNotification);
+                
+                isConnected = true;
+                status.textContent = 'Conectado a ' + device.name;
+                status.className = 'status connected';
+                connectBtn.textContent = 'Desconectar';
+                connectBtn.disabled = false;
+                
+                enableControls(true);
+                
+                // Solicitar estado actual
+                await sendCommand('STATUS');
+                
+            } catch (error) {
+                console.error('Error de conexión:', error);
+                const connectBtn = document.getElementById('connectBtn');
+                const status = document.getElementById('status');
+                
+                status.textContent = 'Error de conexión';
+                status.className = 'status disconnected';
+                connectBtn.textContent = 'Conectar Bluetooth';
+                connectBtn.disabled = false;
+                
+                enableControls(false);
+            }
+        }
+        
+        function handleNotification(event) {
+            const value = new TextDecoder().decode(event.target.value);
+            console.log('Respuesta del ESP32:', value);
+            
+            // Si es un estado, actualizar la UI
+            if (value.includes('M1:') && value.includes('M2:')) {
+                parseStatus(value);
+            }
+        }
+        
+        function parseStatus(statusString) {
+            // Formato: "M1:ON,M2:OFF,M3:ON,M4:OFF"
+            const states = statusString.split(',');
+            states.forEach(state => {
+                const [motor, status] = state.split(':');
+                const motorNum = parseInt(motor.replace('M', ''));
+                const isOn = status === 'ON';
+                updateMotorUI(motorNum, isOn);
+            });
+        }
+        
+        async function sendCommand(command) {
+            if (!isConnected || !characteristic) return;
+            
+            try {
+                const encoder = new TextEncoder();
+                await characteristic.writeValue(encoder.encode(command));
+                console.log('Comando enviado:', command);
+            } catch (error) {
+                console.error('Error enviando comando:', error);
+            }
+        }
+        
+        async function toggleMotor(motorNum) {
+            const currentState = motorStates[motorNum];
+            const newState = !currentState;
+            const command = `M${motorNum}_${newState ? 'ON' : 'OFF'}`;
+            
+            await sendCommand(command);
+            updateMotorUI(motorNum, newState);
+        }
+        
+        async function allMotors(state) {
+            await sendCommand(`ALL_${state}`);
+            
+            for (let i = 1; i <= 4; i++) {
+                updateMotorUI(i, state === 'ON');
+            }
+        }
+        
+        function updateMotorUI(motorNum, isOn) {
+            motorStates[motorNum] = isOn;
+            
+            const motorControl = document.getElementById(`motor${motorNum}`);
+            const button = motorControl.querySelector('.motor-btn');
+            
+            if (isOn) {
+                button.className = 'motor-btn on';
+                button.textContent = 'ON';
+                motorControl.classList.add('active');
+            } else {
+                button.className = 'motor-btn off';
+                button.textContent = 'OFF';
+                motorControl.classList.remove('active');
+            }
+        }
+        
+        function enableControls(enabled) {
+            const buttons = document.querySelectorAll('.motor-btn, .global-btn');
+            buttons.forEach(btn => btn.disabled = !enabled);
+        }
+        
+        // Inicializar controles deshabilitados
+        enableControls(false);
+    </script>
+</body>
+</html>
