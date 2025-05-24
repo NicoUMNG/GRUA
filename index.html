@@ -237,7 +237,7 @@
                    class="ip-input" 
                    id="espIP" 
                    placeholder="192.168.1.100" 
-                   value="192.168.1.100">
+                   value="192.168.0.33">
             <button class="connect-btn" id="connectBtn" onclick="testConnection()">
                 Conectar al ESP32
             </button>
@@ -338,22 +338,40 @@
             addDebugLog(`Intentando conectar a: ${ip}`);
             
             try {
+                // Primero probar si el servidor responde básicamente
+                addDebugLog(`Probando conexión básica a: http://${ip}`);
+                
                 // Usar AbortController para timeout
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
                 
-                // Probar conexión con el ESP32
-                const response = await fetch(`http://${ip}/status`, {
+                // Intentar primero una petición simple a la raíz
+                let response;
+                try {
+                    response = await fetch(`http://${ip}/`, {
+                        method: 'GET',
+                        mode: 'no-cors', // Cambiar a no-cors primero
+                        signal: controller.signal
+                    });
+                    addDebugLog(`Respuesta básica recibida`);
+                } catch (basicError) {
+                    addDebugLog(`Error en petición básica: ${basicError.message}`);
+                    throw new Error(`No se puede alcanzar el ESP32 en ${ip}`);
+                }
+                
+                // Ahora probar el endpoint /status con CORS
+                response = await fetch(`http://${ip}/status`, {
                     method: 'GET',
                     mode: 'cors',
                     signal: controller.signal,
                     headers: {
                         'Accept': 'text/plain',
+                        'Origin': window.location.origin
                     }
                 });
                 
                 clearTimeout(timeoutId);
-                addDebugLog(`Respuesta recibida: ${response.status} ${response.statusText}`);
+                addDebugLog(`Respuesta /status: ${response.status} ${response.statusText}`);
                 
                 if (response.ok) {
                     const responseText = await response.text();
@@ -379,17 +397,28 @@
                 
                 let errorMessage = 'Error de conexión';
                 if (error.name === 'AbortError') {
-                    errorMessage = 'Timeout - Verifica la IP';
+                    errorMessage = 'Timeout - El ESP32 no responde';
                 } else if (error.message.includes('CORS')) {
                     errorMessage = 'Error CORS - Verifica el código ESP32';
-                } else if (error.message.includes('NetworkError')) {
-                    errorMessage = 'No se puede alcanzar el ESP32';
+                } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                    errorMessage = 'No se puede conectar - Verifica que estés en la misma red WiFi';
+                } else if (error.message.includes('No se puede alcanzar')) {
+                    errorMessage = error.message;
                 }
                 
                 status.textContent = `❌ ${errorMessage}`;
                 status.className = 'status disconnected';
                 connectBtn.textContent = 'Reintentar';
                 enableControls(false);
+                
+                // Sugerir soluciones
+                if (error.message.includes('Failed to fetch')) {
+                    addDebugLog('POSIBLES SOLUCIONES:');
+                    addDebugLog('1. Verifica que ambos dispositivos estén en la misma red WiFi');
+                    addDebugLog('2. Intenta abrir http://' + ip + ' en otra pestaña primero');
+                    addDebugLog('3. Verifica que el ESP32 esté encendido y funcionando');
+                    addDebugLog('4. Algunos navegadores bloquean HTTP desde HTTPS - usa HTTP');
+                }
             }
             
             connectBtn.disabled = false;
