@@ -92,6 +92,11 @@
             color: #2e7d32;
         }
         
+        .connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
         .motor-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -209,6 +214,17 @@
         .instructions li {
             margin-bottom: 5px;
         }
+
+        .debug-info {
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 12px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -265,10 +281,10 @@
         <div class="instructions">
             <h4>📋 Configuración del ESP32:</h4>
             <ol>
-                <li>Configura tu ESP32 para crear un servidor web</li>
-                <li>Conecta el ESP32 a tu WiFi</li>
-                <li>Anota la IP que se asigna al ESP32</li>
-                <li>Ingresa esa IP arriba y conecta</li>
+                <li>Sube el código Arduino al ESP32</li>
+                <li>Abre el Monitor Serie (115200 baud)</li>
+                <li>Anota la IP que aparece en el monitor</li>
+                <li>Ingresa esa IP arriba y presiona conectar</li>
             </ol>
             <br>
             <strong>✅ Ventajas WiFi vs Bluetooth:</strong><br>
@@ -276,6 +292,11 @@
             • Mayor alcance que Bluetooth<br>
             • Más estable y rápido<br>
             • No requiere APIs especiales del navegador
+        </div>
+
+        <div id="debugInfo" class="debug-info" style="display: none;">
+            <strong>Debug Info:</strong><br>
+            <div id="debugLog"></div>
         </div>
     </div>
 
@@ -289,6 +310,15 @@
             3: false,
             4: false
         };
+
+        function addDebugLog(message) {
+            const debugLog = document.getElementById('debugLog');
+            const debugInfo = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `[${timestamp}] ${message}<br>`;
+            debugInfo.style.display = 'block';
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
         
         async function testConnection() {
             const ip = document.getElementById('espIP').value.trim();
@@ -305,31 +335,58 @@
             status.textContent = 'Probando conexión...';
             status.className = 'status connecting';
             
+            addDebugLog(`Intentando conectar a: ${ip}`);
+            
             try {
+                // Usar AbortController para timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
                 // Probar conexión con el ESP32
                 const response = await fetch(`http://${ip}/status`, {
                     method: 'GET',
-                    timeout: 5000
+                    mode: 'cors',
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'text/plain',
+                    }
                 });
                 
+                clearTimeout(timeoutId);
+                addDebugLog(`Respuesta recibida: ${response.status} ${response.statusText}`);
+                
                 if (response.ok) {
+                    const responseText = await response.text();
+                    addDebugLog(`Datos recibidos: ${responseText}`);
+                    
                     espIP = ip;
                     isConnected = true;
-                    status.textContent = `Conectado a ${ip}`;
+                    status.textContent = `✅ Conectado a ${ip}`;
                     status.className = 'status connected';
                     connectBtn.textContent = 'Desconectar';
                     connectBtn.onclick = disconnect;
                     
                     enableControls(true);
                     
-                    // Obtener estado actual
-                    getMotorStatus();
+                    // Parsear el estado actual
+                    parseStatus(responseText);
                 } else {
-                    throw new Error('No se pudo conectar');
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
             } catch (error) {
-                status.textContent = `Error de conexión: Verifica la IP`;
+                addDebugLog(`Error: ${error.message}`);
+                
+                let errorMessage = 'Error de conexión';
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Timeout - Verifica la IP';
+                } else if (error.message.includes('CORS')) {
+                    errorMessage = 'Error CORS - Verifica el código ESP32';
+                } else if (error.message.includes('NetworkError')) {
+                    errorMessage = 'No se puede alcanzar el ESP32';
+                }
+                
+                status.textContent = `❌ ${errorMessage}`;
                 status.className = 'status disconnected';
                 connectBtn.textContent = 'Reintentar';
                 enableControls(false);
@@ -348,54 +405,66 @@
             document.getElementById('connectBtn').onclick = testConnection;
             
             enableControls(false);
+            addDebugLog('Desconectado manualmente');
         }
         
         async function sendCommand(command) {
-            if (!isConnected || !espIP) return;
+            if (!isConnected || !espIP) {
+                addDebugLog('Error: No hay conexión activa');
+                return false;
+            }
+            
+            addDebugLog(`Enviando comando: ${command}`);
             
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
                 const response = await fetch(`http://${espIP}/command`, {
                     method: 'POST',
+                    mode: 'cors',
+                    signal: controller.signal,
                     headers: {
                         'Content-Type': 'text/plain',
+                        'Accept': 'text/plain'
                     },
                     body: command
                 });
                 
+                clearTimeout(timeoutId);
+                
                 if (response.ok) {
                     const result = await response.text();
-                    console.log('Respuesta:', result);
+                    addDebugLog(`Respuesta: ${result}`);
+                    return true;
                 } else {
-                    console.error('Error enviando comando');
+                    addDebugLog(`Error HTTP: ${response.status} ${response.statusText}`);
+                    return false;
                 }
             } catch (error) {
-                console.error('Error de conexión:', error);
-            }
-        }
-        
-        async function getMotorStatus() {
-            if (!isConnected || !espIP) return;
-            
-            try {
-                const response = await fetch(`http://${espIP}/status`);
-                if (response.ok) {
-                    const status = await response.text();
-                    parseStatus(status);
-                }
-            } catch (error) {
-                console.error('Error obteniendo estado:', error);
+                addDebugLog(`Error enviando comando: ${error.message}`);
+                return false;
             }
         }
         
         function parseStatus(statusString) {
             // Formato esperado: "M1:ON,M2:OFF,M3:ON,M4:OFF"
-            const states = statusString.split(',');
-            states.forEach(state => {
-                const [motor, status] = state.split(':');
-                const motorNum = parseInt(motor.replace('M', ''));
-                const isOn = status === 'ON';
-                updateMotorUI(motorNum, isOn);
-            });
+            addDebugLog(`Parseando estado: ${statusString}`);
+            
+            try {
+                const states = statusString.split(',');
+                states.forEach(state => {
+                    const [motor, status] = state.split(':');
+                    if (motor && status) {
+                        const motorNum = parseInt(motor.replace('M', ''));
+                        const isOn = status.trim() === 'ON';
+                        updateMotorUI(motorNum, isOn);
+                        addDebugLog(`Motor ${motorNum}: ${isOn ? 'ON' : 'OFF'}`);
+                    }
+                });
+            } catch (error) {
+                addDebugLog(`Error parseando estado: ${error.message}`);
+            }
         }
         
         async function toggleMotor(motorNum) {
@@ -403,15 +472,18 @@
             const newState = !currentState;
             const command = `M${motorNum}_${newState ? 'ON' : 'OFF'}`;
             
-            await sendCommand(command);
-            updateMotorUI(motorNum, newState);
+            const success = await sendCommand(command);
+            if (success) {
+                updateMotorUI(motorNum, newState);
+            }
         }
         
         async function allMotors(state) {
-            await sendCommand(`ALL_${state}`);
-            
-            for (let i = 1; i <= 4; i++) {
-                updateMotorUI(i, state === 'ON');
+            const success = await sendCommand(`ALL_${state}`);
+            if (success) {
+                for (let i = 1; i <= 4; i++) {
+                    updateMotorUI(i, state === 'ON');
+                }
             }
         }
         
@@ -440,12 +512,25 @@
         // Inicializar controles deshabilitados
         enableControls(false);
         
-        // Auto-detectar IP común
-        window.addEventListener('load', () => {
-            // Intentar IPs comunes
-            const commonIPs = ['192.168.1.100', '192.168.0.100', '10.0.0.100'];
-            // Podrías implementar auto-detección aquí
-        });
+        // Verificar conexión periódicamente
+        setInterval(async () => {
+            if (isConnected && espIP) {
+                try {
+                    const response = await fetch(`http://${espIP}/status`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        headers: { 'Accept': 'text/plain' }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Conexión perdida');
+                    }
+                } catch (error) {
+                    addDebugLog('Conexión perdida - Desconectando');
+                    disconnect();
+                }
+            }
+        }, 10000); // Verificar cada 10 segundos
     </script>
 </body>
 </html>
