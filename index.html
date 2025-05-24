@@ -196,11 +196,11 @@
         }
         
         .instructions {
-            background: #fff3cd;
+            background: #e3f2fd;
             border-radius: 10px;
             padding: 20px;
             font-size: 14px;
-            color: #856404;
+            color: #1565c0;
         }
         
         .instructions h4 {
@@ -226,32 +226,36 @@
             overflow-y: auto;
         }
 
-        .test-section {
-            background: #f8f9fa;
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 20px;
+            color: #856404;
         }
 
-        .test-btn {
-            background: #17a2b8;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-            font-size: 12px;
-        }
-
-        .test-btn:hover {
-            background: #138496;
+        .iframe-container {
+            display: none;
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚗 Control de Motores WiFi</h1>
+        
+        <div class="warning-box" id="corsWarning" style="display: none;">
+            <strong>⚠️ Problema de CORS detectado</strong><br>
+            Para solucionar esto:<br>
+            1. Abre directamente http://<span id="espIPWarning"></span> en tu navegador<br>
+            2. O usa la extensión de Chrome "Allow CORS"<br>
+            3. O sirve este archivo desde un servidor web local
+        </div>
         
         <div class="connection-section">
             <h3 style="color: #1565c0; margin-bottom: 15px;">📶 Conexión WiFi</h3>
@@ -263,14 +267,6 @@
             <button class="connect-btn" id="connectBtn" onclick="testConnection()">
                 Conectar al ESP32
             </button>
-        </div>
-
-        <div class="test-section">
-            <h4 style="margin-bottom: 10px;">🔧 Tests de Diagnóstico:</h4>
-            <button class="test-btn" onclick="testBasicConnection()">Test Básico</button>
-            <button class="test-btn" onclick="testStatusEndpoint()">Test /status</button>
-            <button class="test-btn" onclick="testCommandEndpoint()">Test /command</button>
-            <button class="test-btn" onclick="openInNewTab()">Abrir ESP32</button>
         </div>
         
         <div id="status" class="status disconnected">
@@ -309,24 +305,26 @@
         </div>
         
         <div class="instructions">
-            <h4>🚨 Si no conecta, prueba esto:</h4>
+            <h4>📋 Instrucciones:</h4>
             <ol>
-                <li><strong>Abre primero:</strong> <a href="http://192.168.0.33" target="_blank" style="color: #856404;">http://192.168.0.33</a></li>
-                <li>Si la página del ESP32 carga, regresa aquí</li>
-                <li>Usa los botones de test para diagnosticar</li>
-                <li>Si nada funciona, usa Chrome/Firefox</li>
+                <li>Verifica que el ESP32 esté conectado a la red WiFi</li>
+                <li>Confirma la IP en el Monitor Serie</li>
+                <li>Si no funciona, prueba estas opciones:</li>
+                <ul>
+                    <li>Abre http://192.168.0.33 directamente en el navegador</li>
+                    <li>Deshabilita temporalmente el firewall</li>
+                    <li>Usa Chrome o Firefox (evita Safari)</li>
+                    <li>Sirve este archivo desde un servidor web</li>
+                </ul>
             </ol>
-            <br>
-            <strong>📱 Problemas comunes:</strong><br>
-            • Safari iOS: Puede bloquear peticiones HTTP<br>
-            • Algunos navegadores requieren HTTPS<br>
-            • Firewall o antivirus bloqueando conexiones
         </div>
 
         <div id="debugInfo" class="debug-info">
-            <strong>🔍 Log de Depuración:</strong><br>
-            <div id="debugLog">Listo para conectar...<br></div>
+            <strong>Debug Info:</strong><br>
+            <div id="debugLog"></div>
         </div>
+
+        <iframe id="testFrame" class="iframe-container"></iframe>
     </div>
 
     <script>
@@ -347,115 +345,10 @@
             debugLog.scrollTop = debugLog.scrollHeight;
         }
 
-        function openInNewTab() {
-            const ip = document.getElementById('espIP').value.trim();
-            if (ip) {
-                window.open(`http://${ip}`, '_blank');
-                addDebugLog(`Abriendo http://${ip} en nueva pestaña`);
-            }
-        }
-
-        async function testBasicConnection() {
-            const ip = document.getElementById('espIP').value.trim();
-            if (!ip) {
-                alert('Ingresa la IP primero');
-                return;
-            }
-
-            addDebugLog(`=== TEST BÁSICO ===`);
-            addDebugLog(`Probando conexión a: ${ip}`);
-            
-            try {
-                const response = await fetch(`http://${ip}/`, {
-                    method: 'GET',
-                    mode: 'no-cors'
-                });
-                addDebugLog(`✅ Conexión básica OK`);
-                return true;
-            } catch (error) {
-                addDebugLog(`❌ Error conexión básica: ${error.message}`);
-                return false;
-            }
-        }
-
-        async function testStatusEndpoint() {
-            const ip = document.getElementById('espIP').value.trim();
-            if (!ip) {
-                alert('Ingresa la IP primero');
-                return;
-            }
-
-            addDebugLog(`=== TEST /status ===`);
-            
-            try {
-                const response = await fetch(`http://${ip}/status`, {
-                    method: 'GET',
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'text/plain'
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.text();
-                    addDebugLog(`✅ /status OK: ${data}`);
-                    return data;
-                } else {
-                    addDebugLog(`❌ /status Error: ${response.status}`);
-                    return false;
-                }
-            } catch (error) {
-                addDebugLog(`❌ /status Error: ${error.message}`);
-                return false;
-            }
-        }
-
-        async function testCommandEndpoint() {
-            const ip = document.getElementById('espIP').value.trim();
-            if (!ip) {
-                alert('Ingresa la IP primero');
-                return;
-            }
-
-            addDebugLog(`=== TEST /command ===`);
-            
-            try {
-                const response = await fetch(`http://${ip}/command`, {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: {
-                        'Content-Type': 'text/plain',
-                        'Accept': 'text/plain'
-                    },
-                    body: 'M1_ON'
-                });
-                
-                if (response.ok) {
-                    const data = await response.text();
-                    addDebugLog(`✅ /command OK: ${data}`);
-                    
-                    // Apagar el motor inmediatamente
-                    setTimeout(async () => {
-                        await fetch(`http://${ip}/command`, {
-                            method: 'POST',
-                            mode: 'cors',
-                            headers: {
-                                'Content-Type': 'text/plain'
-                            },
-                            body: 'M1_OFF'
-                        });
-                        addDebugLog(`Motor 1 apagado después del test`);
-                    }, 1000);
-                    
-                    return true;
-                } else {
-                    addDebugLog(`❌ /command Error: ${response.status}`);
-                    return false;
-                }
-            } catch (error) {
-                addDebugLog(`❌ /command Error: ${error.message}`);
-                return false;
-            }
+        // Detectar si estamos en file:// o http://
+        addDebugLog(`Protocolo actual: ${window.location.protocol}`);
+        if (window.location.protocol === 'file:') {
+            addDebugLog('⚠️ Abriendo desde archivo local - posibles problemas de CORS');
         }
         
         async function testConnection() {
@@ -473,82 +366,24 @@
             status.textContent = 'Probando conexión...';
             status.className = 'status connecting';
             
-            addDebugLog(`=== INICIANDO CONEXIÓN ===`);
-            addDebugLog(`IP objetivo: ${ip}`);
-            addDebugLog(`Navegador: ${navigator.userAgent}`);
+            addDebugLog(`Intentando conectar a: ${ip}`);
             
+            // Método 1: Intentar fetch directo
             try {
-                // Método mejorado: múltiples intentos con diferentes configuraciones
-                let success = false;
-                let statusData = '';
-
-                // Intento 1: Conexión CORS estándar
-                addDebugLog(`Intento 1: CORS estándar`);
-                try {
-                    const response = await fetch(`http://${ip}/status`, {
-                        method: 'GET',
-                        mode: 'cors',
-                        cache: 'no-cache',
-                        headers: {
-                            'Accept': 'text/plain',
-                            'Cache-Control': 'no-cache'
-                        }
-                    });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(`http://${ip}/status`, {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    const responseText = await response.text();
+                    addDebugLog(`✅ Conexión exitosa! Datos: ${responseText}`);
                     
-                    if (response.ok) {
-                        statusData = await response.text();
-                        success = true;
-                        addDebugLog(`✅ Intento 1 exitoso: ${statusData}`);
-                    }
-                } catch (error) {
-                    addDebugLog(`❌ Intento 1 falló: ${error.message}`);
-                }
-
-                // Intento 2: Con timeout personalizado
-                if (!success) {
-                    addDebugLog(`Intento 2: Con timeout`);
-                    try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 5000);
-                        
-                        const response = await fetch(`http://${ip}/status`, {
-                            method: 'GET',
-                            mode: 'cors',
-                            signal: controller.signal,
-                            headers: {
-                                'Accept': '*/*'
-                            }
-                        });
-                        
-                        clearTimeout(timeoutId);
-                        
-                        if (response.ok) {
-                            statusData = await response.text();
-                            success = true;
-                            addDebugLog(`✅ Intento 2 exitoso: ${statusData}`);
-                        }
-                    } catch (error) {
-                        addDebugLog(`❌ Intento 2 falló: ${error.message}`);
-                    }
-                }
-
-                // Intento 3: Fetch con configuración mínima
-                if (!success) {
-                    addDebugLog(`Intento 3: Configuración mínima`);
-                    try {
-                        const response = await fetch(`http://${ip}/status`);
-                        
-                        if (response.ok) {
-                            statusData = await response.text();
-                            success = true;
-                            addDebugLog(`✅ Intento 3 exitoso: ${statusData}`);
-                        }
-                    } catch (error) {
-                        addDebugLog(`❌ Intento 3 falló: ${error.message}`);
-                    }
-                }
-
-                if (success) {
                     espIP = ip;
                     isConnected = true;
                     status.textContent = `✅ Conectado a ${ip}`;
@@ -557,59 +392,80 @@
                     connectBtn.onclick = disconnect;
                     
                     enableControls(true);
-                    parseStatus(statusData);
-                    addDebugLog(`🎉 CONEXIÓN EXITOSA`);
+                    parseStatus(responseText);
                     
-                    // Comenzar monitoreo
-                    startStatusMonitoring();
-                } else {
-                    throw new Error('Todos los intentos de conexión fallaron');
+                    document.getElementById('corsWarning').style.display = 'none';
                 }
                 
             } catch (error) {
-                addDebugLog(`💥 ERROR GENERAL: ${error.message}`);
+                addDebugLog(`❌ Error en método 1: ${error.message}`);
                 
-                status.textContent = `❌ Error de conexión`;
-                status.className = 'status disconnected';
-                connectBtn.textContent = 'Reintentar';
-                enableControls(false);
-
-                // Mostrar sugerencias específicas
-                addDebugLog(`📋 SUGERENCIAS:`);
-                addDebugLog(`1. Abre http://${ip} en otra pestaña primero`);
-                addDebugLog(`2. Verifica que estés en la misma red WiFi`);
-                addDebugLog(`3. Usa Chrome o Firefox`);
-                addDebugLog(`4. Desactiva temporalmente el antivirus`);
+                // Método 2: Intentar con XMLHttpRequest
+                addDebugLog('Intentando método alternativo con XMLHttpRequest...');
+                
+                const xhr = new XMLHttpRequest();
+                xhr.timeout = 5000;
+                
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        addDebugLog(`✅ Conexión exitosa con XHR! Datos: ${xhr.responseText}`);
+                        
+                        espIP = ip;
+                        isConnected = true;
+                        status.textContent = `✅ Conectado a ${ip}`;
+                        status.className = 'status connected';
+                        connectBtn.textContent = 'Desconectar';
+                        connectBtn.onclick = disconnect;
+                        
+                        enableControls(true);
+                        parseStatus(xhr.responseText);
+                        
+                        document.getElementById('corsWarning').style.display = 'none';
+                    } else {
+                        showConnectionError(ip);
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    addDebugLog('❌ Error con XMLHttpRequest');
+                    showConnectionError(ip);
+                };
+                
+                xhr.ontimeout = function() {
+                    addDebugLog('❌ Timeout con XMLHttpRequest');
+                    showConnectionError(ip);
+                };
+                
+                try {
+                    xhr.open('GET', `http://${ip}/status`, true);
+                    xhr.send();
+                } catch (e) {
+                    addDebugLog(`❌ Error abriendo XHR: ${e.message}`);
+                    showConnectionError(ip);
+                }
             }
             
             connectBtn.disabled = false;
         }
-
-        function startStatusMonitoring() {
-            // Obtener estado cada 3 segundos
-            const monitor = setInterval(async () => {
-                if (!isConnected || !espIP) {
-                    clearInterval(monitor);
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`http://${espIP}/status`, {
-                        method: 'GET',
-                        mode: 'cors'
-                    });
-                    
-                    if (response.ok) {
-                        const statusData = await response.text();
-                        parseStatus(statusData);
-                    } else {
-                        throw new Error('Status request failed');
-                    }
-                } catch (error) {
-                    addDebugLog(`⚠️ Monitoreo perdido: ${error.message}`);
-                    // No desconectar automáticamente, solo avisar
-                }
-            }, 3000);
+        
+        function showConnectionError(ip) {
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            
+            status.textContent = '❌ Error de conexión - Ver debug';
+            status.className = 'status disconnected';
+            connectBtn.textContent = 'Reintentar';
+            enableControls(false);
+            
+            // Mostrar advertencia de CORS
+            document.getElementById('corsWarning').style.display = 'block';
+            document.getElementById('espIPWarning').textContent = ip;
+            
+            addDebugLog('💡 SOLUCIONES SUGERIDAS:');
+            addDebugLog('1. Abre http://' + ip + ' en una nueva pestaña');
+            addDebugLog('2. Usa python -m http.server para servir este archivo');
+            addDebugLog('3. Deshabilita temporalmente el firewall');
+            addDebugLog('4. Verifica que ambos dispositivos estén en la misma red');
         }
         
         function disconnect() {
@@ -622,44 +478,55 @@
             document.getElementById('connectBtn').onclick = testConnection;
             
             enableControls(false);
-            addDebugLog('🔌 Desconectado manualmente');
+            addDebugLog('Desconectado manualmente');
         }
         
         async function sendCommand(command) {
             if (!isConnected || !espIP) {
-                addDebugLog('❌ No hay conexión activa');
+                addDebugLog('Error: No hay conexión activa');
                 return false;
             }
             
-            addDebugLog(`📡 Enviando: ${command}`);
+            addDebugLog(`Enviando comando: ${command}`);
             
-            try {
-                const response = await fetch(`http://${espIP}/command`, {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: {
-                        'Content-Type': 'text/plain',
-                        'Accept': 'text/plain'
-                    },
-                    body: command
-                });
+            // Usar XMLHttpRequest para mejor compatibilidad
+            return new Promise((resolve) => {
+                const xhr = new XMLHttpRequest();
+                xhr.timeout = 3000;
                 
-                if (response.ok) {
-                    const result = await response.text();
-                    addDebugLog(`✅ Respuesta: ${result}`);
-                    return true;
-                } else {
-                    addDebugLog(`❌ Error HTTP: ${response.status}`);
-                    return false;
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        addDebugLog(`✅ Comando enviado: ${xhr.responseText}`);
+                        resolve(true);
+                    } else {
+                        addDebugLog(`❌ Error HTTP: ${xhr.status}`);
+                        resolve(false);
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    addDebugLog('❌ Error enviando comando');
+                    resolve(false);
+                };
+                
+                xhr.ontimeout = function() {
+                    addDebugLog('❌ Timeout enviando comando');
+                    resolve(false);
+                };
+                
+                try {
+                    xhr.open('POST', `http://${espIP}/command`, true);
+                    xhr.setRequestHeader('Content-Type', 'text/plain');
+                    xhr.send(command);
+                } catch (e) {
+                    addDebugLog(`❌ Error: ${e.message}`);
+                    resolve(false);
                 }
-            } catch (error) {
-                addDebugLog(`❌ Error enviando: ${error.message}`);
-                return false;
-            }
+            });
         }
         
         function parseStatus(statusString) {
-            addDebugLog(`📊 Estado recibido: ${statusString}`);
+            addDebugLog(`Parseando estado: ${statusString}`);
             
             try {
                 const states = statusString.split(',');
@@ -672,7 +539,7 @@
                     }
                 });
             } catch (error) {
-                addDebugLog(`❌ Error parseando: ${error.message}`);
+                addDebugLog(`Error parseando estado: ${error.message}`);
             }
         }
         
@@ -718,10 +585,18 @@
             buttons.forEach(btn => btn.disabled = !enabled);
         }
         
-        // Inicializar
+        // Inicializar controles deshabilitados
         enableControls(false);
-        addDebugLog('🚀 Aplicación iniciada');
-        addDebugLog('💡 Consejo: Usa los botones de test para diagnosticar problemas');
+        
+        // Auto-intentar conexión al cargar
+        window.addEventListener('load', () => {
+            addDebugLog('Página cargada - listo para conectar');
+            // Si hay una IP predefinida, intentar conectar automáticamente
+            if (document.getElementById('espIP').value) {
+                addDebugLog('IP predefinida encontrada, intentando conexión automática en 1 segundo...');
+                setTimeout(testConnection, 1000);
+            }
+        });
     </script>
 </body>
 </html>
