@@ -52,6 +52,16 @@
             color: #2e7d32;
         }
         
+        .connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
         .connect-btn {
             width: 100%;
             padding: 15px;
@@ -140,6 +150,7 @@
         .global-controls {
             display: flex;
             gap: 10px;
+            margin-bottom: 20px;
         }
         
         .global-btn {
@@ -174,19 +185,42 @@
             transform: none;
         }
         
+        .debug-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: #666;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
         .note {
-            margin-top: 20px;
             padding: 15px;
             background: #fff3cd;
             border-radius: 10px;
             font-size: 14px;
             color: #856404;
         }
+        
+        .compatibility {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #1565c0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚗 Control de Motores</h1>
+        
+        <div class="compatibility" id="compatibility">
+            Verificando compatibilidad...
+        </div>
         
         <div id="status" class="status disconnected">
             Desconectado
@@ -195,6 +229,11 @@
         <button id="connectBtn" class="connect-btn">
             Conectar Bluetooth
         </button>
+        
+        <div class="debug-info" id="debugInfo">
+            <strong>Debug Info:</strong><br>
+            Esperando conexión...
+        </div>
         
         <div class="motor-grid">
             <div class="motor-control" id="motor1">
@@ -228,7 +267,10 @@
         </div>
         
         <div class="note">
-            <strong>Nota:</strong> Esta aplicación usa BLE (Bluetooth Low Energy) y funciona perfectamente en iPhone con Safari o Chrome. También en Android con Chrome.
+            <strong>Instrucciones:</strong><br>
+            1. Asegúrate de que el ESP32 esté encendido<br>
+            2. Permite el acceso a Bluetooth cuando se solicite<br>
+            3. Busca "ESP32_Motors_BLE" en la lista de dispositivos
         </div>
     </div>
 
@@ -244,58 +286,146 @@
             4: false
         };
         
+        // Verificar compatibilidad al cargar
+        document.addEventListener('DOMContentLoaded', checkCompatibility);
         document.getElementById('connectBtn').addEventListener('click', connect);
         
+        function checkCompatibility() {
+            const compatibilityDiv = document.getElementById('compatibility');
+            
+            if (!navigator.bluetooth) {
+                compatibilityDiv.innerHTML = '❌ <strong>Bluetooth Web API no disponible</strong><br>Usa Chrome o Safari en iOS 13+';
+                compatibilityDiv.style.background = '#ffebee';
+                compatibilityDiv.style.color = '#c62828';
+                document.getElementById('connectBtn').disabled = true;
+                return;
+            }
+            
+            // Verificar si estamos en HTTPS
+            const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
+            if (!isSecure) {
+                compatibilityDiv.innerHTML = '❌ <strong>HTTPS requerido</strong><br>El Bluetooth Web API requiere conexión segura';
+                compatibilityDiv.style.background = '#ffebee';
+                compatibilityDiv.style.color = '#c62828';
+                return;
+            }
+            
+            compatibilityDiv.innerHTML = `✅ <strong>Compatible</strong><br>
+                Navegador: ${navigator.userAgent.includes('Safari') ? 'Safari' : navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Otro'}<br>
+                Protocolo: ${location.protocol}<br>
+                Bluetooth API: Disponible`;
+        }
+        
+        function addDebugInfo(message) {
+            const debugDiv = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            debugDiv.innerHTML += `<br>[${timestamp}] ${message}`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+        
         async function connect() {
+            if (isConnected) {
+                disconnect();
+                return;
+            }
+            
             try {
                 const connectBtn = document.getElementById('connectBtn');
                 const status = document.getElementById('status');
                 
                 connectBtn.disabled = true;
                 connectBtn.textContent = 'Conectando...';
+                status.textContent = 'Buscando dispositivos...';
+                status.className = 'status connecting';
                 
-                // Buscar dispositivo BLE
-                device = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: 'ESP32_Motors_BLE' }],
+                addDebugInfo('Iniciando búsqueda de dispositivos BLE...');
+                
+                // Opciones más flexibles para la búsqueda
+                const options = {
+                    filters: [
+                        { name: 'ESP32_Motors_BLE' },
+                        { namePrefix: 'ESP32' }
+                    ],
                     optionalServices: ['12345678-1234-1234-1234-123456789abc']
-                });
+                };
+                
+                addDebugInfo('Solicitando dispositivo con filtros...');
+                device = await navigator.bluetooth.requestDevice(options);
+                
+                addDebugInfo(`Dispositivo encontrado: ${device.name || 'Sin nombre'}`);
+                
+                status.textContent = 'Conectando al dispositivo...';
+                addDebugInfo('Conectando al servidor GATT...');
                 
                 const server = await device.gatt.connect();
+                addDebugInfo('Servidor GATT conectado');
+                
+                addDebugInfo('Obteniendo servicio primario...');
                 const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789abc');
+                
+                addDebugInfo('Obteniendo característica...');
                 characteristic = await service.getCharacteristic('87654321-4321-4321-4321-cba987654321');
                 
-                // Habilitar notificaciones
+                addDebugInfo('Habilitando notificaciones...');
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', handleNotification);
                 
+                // Manejar desconexión
+                device.addEventListener('gattserverdisconnected', handleDisconnection);
+                
                 isConnected = true;
-                status.textContent = 'Conectado a ' + device.name;
+                status.textContent = `Conectado a ${device.name || 'ESP32'}`;
                 status.className = 'status connected';
                 connectBtn.textContent = 'Desconectar';
                 connectBtn.disabled = false;
                 
                 enableControls(true);
+                addDebugInfo('¡Conexión exitosa!');
                 
                 // Solicitar estado actual
-                await sendCommand('STATUS');
+                setTimeout(() => sendCommand('STATUS'), 1000);
                 
             } catch (error) {
+                addDebugInfo(`Error: ${error.message}`);
                 console.error('Error de conexión:', error);
+                
                 const connectBtn = document.getElementById('connectBtn');
                 const status = document.getElementById('status');
                 
-                status.textContent = 'Error de conexión';
-                status.className = 'status disconnected';
-                connectBtn.textContent = 'Conectar Bluetooth';
+                status.textContent = `Error: ${error.message}`;
+                status.className = 'status error';
+                connectBtn.textContent = 'Reintentar Conexión';
                 connectBtn.disabled = false;
                 
                 enableControls(false);
+                isConnected = false;
             }
+        }
+        
+        function disconnect() {
+            if (device && device.gatt.connected) {
+                device.gatt.disconnect();
+            }
+            handleDisconnection();
+        }
+        
+        function handleDisconnection() {
+            isConnected = false;
+            const connectBtn = document.getElementById('connectBtn');
+            const status = document.getElementById('status');
+            
+            status.textContent = 'Desconectado';
+            status.className = 'status disconnected';
+            connectBtn.textContent = 'Conectar Bluetooth';
+            connectBtn.disabled = false;
+            
+            enableControls(false);
+            addDebugInfo('Dispositivo desconectado');
         }
         
         function handleNotification(event) {
             const value = new TextDecoder().decode(event.target.value);
-            console.log('Respuesta del ESP32:', value);
+            addDebugInfo(`Recibido: ${value}`);
             
             // Si es un estado, actualizar la UI
             if (value.includes('M1:') && value.includes('M2:')) {
@@ -315,13 +445,17 @@
         }
         
         async function sendCommand(command) {
-            if (!isConnected || !characteristic) return;
+            if (!isConnected || !characteristic) {
+                addDebugInfo('No conectado - comando ignorado');
+                return;
+            }
             
             try {
                 const encoder = new TextEncoder();
                 await characteristic.writeValue(encoder.encode(command));
-                console.log('Comando enviado:', command);
+                addDebugInfo(`Enviado: ${command}`);
             } catch (error) {
+                addDebugInfo(`Error enviando comando: ${error.message}`);
                 console.error('Error enviando comando:', error);
             }
         }
