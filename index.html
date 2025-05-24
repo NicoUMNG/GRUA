@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control Motores ESP32</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Control Motores">
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDMyIDMyIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0iIzY2N2VlYSIgcng9IjQiLz48dGV4dCB4PSI1IiB5PSIyMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IndoaXRlIj7wn5qXPC90ZXh0Pjwvc3ZnPg==">
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ29udHJvbCBNb3RvcmVzIEVTUDMyIiwic2hvcnRfbmFtZSI6Ik1vdG9yZXMiLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiM2NjdlZWEiLCJ0aGVtZV9jb2xvciI6IiM2NjdlZWEiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCM2FXUjBhRDBpTVRreUlpQm9aV2xuYUhROUlqRTVNaUlpZG1sbGQwSnZlRDBpTUNBd0lETXlJRE15SWlCbWFXeHNQU0p1YjI1bElpQjRiV3h1Y3owaWFIUjBjRG92TDNkM2R5NTNNeTV2Y21jdk1qQXdNQzl6ZG1jaVBqeHlaV04wSUhkcFpIUm9QU0l6TWlJZ2FHVnBaMmgwUFNJek1pSWdabWxzYkQwaUl6WTJOMlZsWVNJZ2NuZzlJalFpTHo0OGRHVjRkQ0I0UFNJMUlpQjVQU0l5TUNJaVptOXVkQzFtWVcxcGJIazlJbk5oYm5NdGMyVnlhV1lpSUdadmJuUXRjMmw2WlQwaU1USWlJR1pwYkd3OUluZG9hWFJsSWo0OGNtRmpjbUZqT3p3dmRHVjRkRDQ4TDNOMlp6ND0iLCJzaXplcyI6IjE5MngxOTIiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
+    
     <style>
         * {
             margin: 0;
@@ -34,57 +45,56 @@
             font-size: 24px;
         }
         
-        .status {
-            text-align: center;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            font-weight: bold;
-        }
-        
-        .disconnected {
-            background: #ffebee;
-            color: #c62828;
-        }
-        
-        .connected {
-            background: #e8f5e8;
-            color: #2e7d32;
-        }
-        
-        .connecting {
+        .warning {
             background: #fff3cd;
-            color: #856404;
-        }
-        
-        .error {
-            background: #ffebee;
-            color: #c62828;
-        }
-        
-        .connect-btn {
-            width: 100%;
-            padding: 15px;
-            background: #4CAF50;
-            color: white;
-            border: none;
+            border: 2px solid #ffc107;
             border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
+            padding: 20px;
             margin-bottom: 30px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            text-align: center;
         }
         
-        .connect-btn:hover {
-            background: #45a049;
-            transform: translateY(-2px);
+        .warning h2 {
+            color: #856404;
+            margin-bottom: 15px;
+            font-size: 18px;
         }
         
-        .connect-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
+        .warning p {
+            color: #856404;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        
+        .alternatives {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .alternatives h3 {
+            color: #1565c0;
+            margin-bottom: 15px;
+        }
+        
+        .alternative {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .alternative h4 {
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+        
+        .alternative p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.4;
         }
         
         .motor-grid {
@@ -92,6 +102,8 @@
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 30px;
+            opacity: 0.5;
+            pointer-events: none;
         }
         
         .motor-control {
@@ -99,18 +111,13 @@
             padding: 20px;
             border: 2px solid #eee;
             border-radius: 15px;
-            transition: all 0.3s ease;
-        }
-        
-        .motor-control.active {
-            border-color: #4CAF50;
-            background: #f8fff8;
+            background: #f5f5f5;
         }
         
         .motor-name {
             font-weight: bold;
             margin-bottom: 10px;
-            color: #333;
+            color: #666;
         }
         
         .motor-btn {
@@ -120,387 +127,149 @@
             border: none;
             font-size: 14px;
             font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            background: #ccc;
+            color: #666;
             margin: 5px;
         }
         
-        .motor-btn.on {
-            background: #4CAF50;
-            color: white;
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-        }
-        
-        .motor-btn.off {
-            background: #f44336;
-            color: white;
-            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
-        }
-        
-        .motor-btn:hover {
-            transform: scale(1.05);
-        }
-        
-        .motor-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .global-controls {
-            display: flex;
-            gap: 10px;
+        .install-section {
+            background: #e8f5e8;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
             margin-bottom: 20px;
         }
         
-        .global-btn {
-            flex: 1;
-            padding: 15px;
+        .install-btn {
+            background: #4CAF50;
+            color: white;
             border: none;
-            border-radius: 10px;
+            padding: 15px 30px;
+            border-radius: 25px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease;
+            margin-top: 10px;
         }
         
-        .all-on {
-            background: #4CAF50;
-            color: white;
+        .install-btn:hover {
+            background: #45a049;
         }
         
-        .all-off {
-            background: #f44336;
-            color: white;
-        }
-        
-        .global-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        
-        .global-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .debug-info {
-            background: #f8f9fa;
+        .qr-code {
+            background: white;
+            padding: 20px;
             border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 12px;
-            color: #666;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-        
-        .note {
-            padding: 15px;
-            background: #fff3cd;
-            border-radius: 10px;
-            font-size: 14px;
-            color: #856404;
-        }
-        
-        .compatibility {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #1565c0;
+            text-align: center;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚗 Control de Motores</h1>
+        <h1>🚗 Control de Motores ESP32</h1>
         
-        <div class="compatibility" id="compatibility">
-            Verificando compatibilidad...
+        <div class="warning">
+            <h2>⚠️ Limitación de iOS</h2>
+            <p><strong>iOS no permite que las páginas web accedan al Bluetooth</strong> por razones de seguridad.</p>
+            <p>Esto afecta tanto a Safari como a Chrome en iPhone/iPad.</p>
         </div>
         
-        <div id="status" class="status disconnected">
-            Desconectado
+        <div class="alternatives">
+            <h3>🔧 Soluciones Disponibles:</h3>
+            
+            <div class="alternative">
+                <h4>1. 📱 Usar Android</h4>
+                <p>La forma más fácil. Chrome en Android tiene soporte completo para Bluetooth Web API.</p>
+            </div>
+            
+            <div class="alternative">
+                <h4>2. 🖥️ Usar Computadora</h4>
+                <p>Chrome en Windows, Mac o Linux funciona perfectamente con esta aplicación.</p>
+            </div>
+            
+            <div class="alternative">
+                <h4>3. 📲 App Nativa para iOS</h4>
+                <p>Crear una app específica para iOS usando Swift y Core Bluetooth (requiere desarrollo nativo).</p>
+            </div>
+            
+            <div class="alternative">
+                <h4>4. 🌐 Servidor Intermedio</h4>
+                <p>Usar una Raspberry Pi o computadora como puente entre iOS y el ESP32 vía WiFi.</p>
+            </div>
         </div>
         
-        <button id="connectBtn" class="connect-btn">
-            Conectar Bluetooth
-        </button>
-        
-        <div class="debug-info" id="debugInfo">
-            <strong>Debug Info:</strong><br>
-            Esperando conexión...
+        <div class="install-section">
+            <h3>📱 Instalar como App</h3>
+            <p>Aunque no funcione el Bluetooth, puedes instalar esta página como app:</p>
+            <p><strong>Safari:</strong> Compartir → Añadir a pantalla de inicio</p>
+            <button class="install-btn" onclick="installApp()">Instalar App</button>
         </div>
         
+        <div class="qr-code">
+            <h4>📱 Comparte con Android</h4>
+            <p>Código QR para que alguien con Android pueda usar la app:</p>
+            <div style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                ${window.location.href}
+            </div>
+        </div>
+        
+        <!-- Interfaz deshabilitada para mostrar cómo se vería -->
         <div class="motor-grid">
-            <div class="motor-control" id="motor1">
+            <div class="motor-control">
                 <div class="motor-name">Motor 1 (Pin 26)</div>
-                <button class="motor-btn off" onclick="toggleMotor(1)">OFF</button>
+                <button class="motor-btn">OFF</button>
             </div>
             
-            <div class="motor-control" id="motor2">
+            <div class="motor-control">
                 <div class="motor-name">Motor 2 (Pin 25)</div>
-                <button class="motor-btn off" onclick="toggleMotor(2)">OFF</button>
+                <button class="motor-btn">OFF</button>
             </div>
             
-            <div class="motor-control" id="motor3">
+            <div class="motor-control">
                 <div class="motor-name">Motor 3 (Pin 33)</div>
-                <button class="motor-btn off" onclick="toggleMotor(3)">OFF</button>
+                <button class="motor-btn">OFF</button>
             </div>
             
-            <div class="motor-control" id="motor4">
+            <div class="motor-control">
                 <div class="motor-name">Motor 4 (Pin 32)</div>
-                <button class="motor-btn off" onclick="toggleMotor(4)">OFF</button>
+                <button class="motor-btn">OFF</button>
             </div>
         </div>
         
-        <div class="global-controls">
-            <button class="global-btn all-on" onclick="allMotors('ON')">
-                Todos ON
-            </button>
-            <button class="global-btn all-off" onclick="allMotors('OFF')">
-                Todos OFF
-            </button>
-        </div>
-        
-        <div class="note">
-            <strong>Instrucciones:</strong><br>
-            1. Asegúrate de que el ESP32 esté encendido<br>
-            2. Permite el acceso a Bluetooth cuando se solicite<br>
-            3. Busca "ESP32_Motors_BLE" en la lista de dispositivos
+        <div style="text-align: center; color: #666; font-style: italic;">
+            Interfaz no funcional en iOS - Solo demostración
         </div>
     </div>
 
     <script>
-        let device;
-        let characteristic;
-        let isConnected = false;
+        let deferredPrompt;
         
-        const motorStates = {
-            1: false,
-            2: false,
-            3: false,
-            4: false
-        };
+        // Detectar si la app se puede instalar
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+        });
         
-        // Verificar compatibilidad al cargar
-        document.addEventListener('DOMContentLoaded', checkCompatibility);
-        document.getElementById('connectBtn').addEventListener('click', connect);
-        
-        function checkCompatibility() {
-            const compatibilityDiv = document.getElementById('compatibility');
-            
-            if (!navigator.bluetooth) {
-                compatibilityDiv.innerHTML = '❌ <strong>Bluetooth Web API no disponible</strong><br>Usa Chrome o Safari en iOS 13+';
-                compatibilityDiv.style.background = '#ffebee';
-                compatibilityDiv.style.color = '#c62828';
-                document.getElementById('connectBtn').disabled = true;
-                return;
-            }
-            
-            // Verificar si estamos en HTTPS
-            const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
-            if (!isSecure) {
-                compatibilityDiv.innerHTML = '❌ <strong>HTTPS requerido</strong><br>El Bluetooth Web API requiere conexión segura';
-                compatibilityDiv.style.background = '#ffebee';
-                compatibilityDiv.style.color = '#c62828';
-                return;
-            }
-            
-            compatibilityDiv.innerHTML = `✅ <strong>Compatible</strong><br>
-                Navegador: ${navigator.userAgent.includes('Safari') ? 'Safari' : navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Otro'}<br>
-                Protocolo: ${location.protocol}<br>
-                Bluetooth API: Disponible`;
-        }
-        
-        function addDebugInfo(message) {
-            const debugDiv = document.getElementById('debugInfo');
-            const timestamp = new Date().toLocaleTimeString();
-            debugDiv.innerHTML += `<br>[${timestamp}] ${message}`;
-            debugDiv.scrollTop = debugDiv.scrollHeight;
-        }
-        
-        async function connect() {
-            if (isConnected) {
-                disconnect();
-                return;
-            }
-            
-            try {
-                const connectBtn = document.getElementById('connectBtn');
-                const status = document.getElementById('status');
-                
-                connectBtn.disabled = true;
-                connectBtn.textContent = 'Conectando...';
-                status.textContent = 'Buscando dispositivos...';
-                status.className = 'status connecting';
-                
-                addDebugInfo('Iniciando búsqueda de dispositivos BLE...');
-                
-                // Opciones más flexibles para la búsqueda
-                const options = {
-                    filters: [
-                        { name: 'ESP32_Motors_BLE' },
-                        { namePrefix: 'ESP32' }
-                    ],
-                    optionalServices: ['12345678-1234-1234-1234-123456789abc']
-                };
-                
-                addDebugInfo('Solicitando dispositivo con filtros...');
-                device = await navigator.bluetooth.requestDevice(options);
-                
-                addDebugInfo(`Dispositivo encontrado: ${device.name || 'Sin nombre'}`);
-                
-                status.textContent = 'Conectando al dispositivo...';
-                addDebugInfo('Conectando al servidor GATT...');
-                
-                const server = await device.gatt.connect();
-                addDebugInfo('Servidor GATT conectado');
-                
-                addDebugInfo('Obteniendo servicio primario...');
-                const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789abc');
-                
-                addDebugInfo('Obteniendo característica...');
-                characteristic = await service.getCharacteristic('87654321-4321-4321-4321-cba987654321');
-                
-                addDebugInfo('Habilitando notificaciones...');
-                await characteristic.startNotifications();
-                characteristic.addEventListener('characteristicvaluechanged', handleNotification);
-                
-                // Manejar desconexión
-                device.addEventListener('gattserverdisconnected', handleDisconnection);
-                
-                isConnected = true;
-                status.textContent = `Conectado a ${device.name || 'ESP32'}`;
-                status.className = 'status connected';
-                connectBtn.textContent = 'Desconectar';
-                connectBtn.disabled = false;
-                
-                enableControls(true);
-                addDebugInfo('¡Conexión exitosa!');
-                
-                // Solicitar estado actual
-                setTimeout(() => sendCommand('STATUS'), 1000);
-                
-            } catch (error) {
-                addDebugInfo(`Error: ${error.message}`);
-                console.error('Error de conexión:', error);
-                
-                const connectBtn = document.getElementById('connectBtn');
-                const status = document.getElementById('status');
-                
-                status.textContent = `Error: ${error.message}`;
-                status.className = 'status error';
-                connectBtn.textContent = 'Reintentar Conexión';
-                connectBtn.disabled = false;
-                
-                enableControls(false);
-                isConnected = false;
-            }
-        }
-        
-        function disconnect() {
-            if (device && device.gatt.connected) {
-                device.gatt.disconnect();
-            }
-            handleDisconnection();
-        }
-        
-        function handleDisconnection() {
-            isConnected = false;
-            const connectBtn = document.getElementById('connectBtn');
-            const status = document.getElementById('status');
-            
-            status.textContent = 'Desconectado';
-            status.className = 'status disconnected';
-            connectBtn.textContent = 'Conectar Bluetooth';
-            connectBtn.disabled = false;
-            
-            enableControls(false);
-            addDebugInfo('Dispositivo desconectado');
-        }
-        
-        function handleNotification(event) {
-            const value = new TextDecoder().decode(event.target.value);
-            addDebugInfo(`Recibido: ${value}`);
-            
-            // Si es un estado, actualizar la UI
-            if (value.includes('M1:') && value.includes('M2:')) {
-                parseStatus(value);
-            }
-        }
-        
-        function parseStatus(statusString) {
-            // Formato: "M1:ON,M2:OFF,M3:ON,M4:OFF"
-            const states = statusString.split(',');
-            states.forEach(state => {
-                const [motor, status] = state.split(':');
-                const motorNum = parseInt(motor.replace('M', ''));
-                const isOn = status === 'ON';
-                updateMotorUI(motorNum, isOn);
-            });
-        }
-        
-        async function sendCommand(command) {
-            if (!isConnected || !characteristic) {
-                addDebugInfo('No conectado - comando ignorado');
-                return;
-            }
-            
-            try {
-                const encoder = new TextEncoder();
-                await characteristic.writeValue(encoder.encode(command));
-                addDebugInfo(`Enviado: ${command}`);
-            } catch (error) {
-                addDebugInfo(`Error enviando comando: ${error.message}`);
-                console.error('Error enviando comando:', error);
-            }
-        }
-        
-        async function toggleMotor(motorNum) {
-            const currentState = motorStates[motorNum];
-            const newState = !currentState;
-            const command = `M${motorNum}_${newState ? 'ON' : 'OFF'}`;
-            
-            await sendCommand(command);
-            updateMotorUI(motorNum, newState);
-        }
-        
-        async function allMotors(state) {
-            await sendCommand(`ALL_${state}`);
-            
-            for (let i = 1; i <= 4; i++) {
-                updateMotorUI(i, state === 'ON');
-            }
-        }
-        
-        function updateMotorUI(motorNum, isOn) {
-            motorStates[motorNum] = isOn;
-            
-            const motorControl = document.getElementById(`motor${motorNum}`);
-            const button = motorControl.querySelector('.motor-btn');
-            
-            if (isOn) {
-                button.className = 'motor-btn on';
-                button.textContent = 'ON';
-                motorControl.classList.add('active');
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('App instalada');
+                    }
+                    deferredPrompt = null;
+                });
             } else {
-                button.className = 'motor-btn off';
-                button.textContent = 'OFF';
-                motorControl.classList.remove('active');
+                // Instrucciones manuales para iOS
+                alert('Para instalar:\n1. Toca el botón "Compartir" en Safari\n2. Selecciona "Añadir a pantalla de inicio"');
             }
         }
         
-        function enableControls(enabled) {
-            const buttons = document.querySelectorAll('.motor-btn, .global-btn');
-            buttons.forEach(btn => btn.disabled = !enabled);
+        // Detectar si ya está instalada como PWA
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            document.querySelector('.install-section').style.display = 'none';
         }
-        
-        // Inicializar controles deshabilitados
-        enableControls(false);
     </script>
 </body>
 </html>
