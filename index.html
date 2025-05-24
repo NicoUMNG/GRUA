@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Motores ESP32</title>
+    <title>Control Motores ESP32 - WiFi</title>
     <style>
         * {
             margin: 0;
@@ -34,6 +34,46 @@
             font-size: 24px;
         }
         
+        .connection-section {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .ip-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .connect-btn {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .connect-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .connect-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .status {
             text-align: center;
             padding: 15px;
@@ -50,41 +90,6 @@
         .connected {
             background: #e8f5e8;
             color: #2e7d32;
-        }
-        
-        .connecting {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .error {
-            background: #ffebee;
-            color: #c62828;
-        }
-        
-        .connect-btn {
-            width: 100%;
-            padding: 15px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 30px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .connect-btn:hover {
-            background: #45a049;
-            transform: translateY(-2px);
-        }
-        
-        .connect-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
         }
         
         .motor-grid {
@@ -185,54 +190,45 @@
             transform: none;
         }
         
-        .debug-info {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 12px;
-            color: #666;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-        
-        .note {
-            padding: 15px;
+        .instructions {
             background: #fff3cd;
             border-radius: 10px;
+            padding: 20px;
             font-size: 14px;
             color: #856404;
         }
         
-        .compatibility {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #1565c0;
+        .instructions h4 {
+            margin-bottom: 10px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚗 Control de Motores</h1>
+        <h1>🚗 Control de Motores WiFi</h1>
         
-        <div class="compatibility" id="compatibility">
-            Verificando compatibilidad...
+        <div class="connection-section">
+            <h3 style="color: #1565c0; margin-bottom: 15px;">📶 Conexión WiFi</h3>
+            <input type="text" 
+                   class="ip-input" 
+                   id="espIP" 
+                   placeholder="192.168.1.100" 
+                   value="192.168.1.100">
+            <button class="connect-btn" id="connectBtn" onclick="testConnection()">
+                Conectar al ESP32
+            </button>
         </div>
         
         <div id="status" class="status disconnected">
             Desconectado
-        </div>
-        
-        <button id="connectBtn" class="connect-btn">
-            Conectar Bluetooth
-        </button>
-        
-        <div class="debug-info" id="debugInfo">
-            <strong>Debug Info:</strong><br>
-            Esperando conexión...
         </div>
         
         <div class="motor-grid">
@@ -266,18 +262,26 @@
             </button>
         </div>
         
-        <div class="note">
-            <strong>Instrucciones:</strong><br>
-            1. Asegúrate de que el ESP32 esté encendido<br>
-            2. Permite el acceso a Bluetooth cuando se solicite<br>
-            3. Busca "ESP32_Motors_BLE" en la lista de dispositivos
+        <div class="instructions">
+            <h4>📋 Configuración del ESP32:</h4>
+            <ol>
+                <li>Configura tu ESP32 para crear un servidor web</li>
+                <li>Conecta el ESP32 a tu WiFi</li>
+                <li>Anota la IP que se asigna al ESP32</li>
+                <li>Ingresa esa IP arriba y conecta</li>
+            </ol>
+            <br>
+            <strong>✅ Ventajas WiFi vs Bluetooth:</strong><br>
+            • Funciona en iOS, Android y computadoras<br>
+            • Mayor alcance que Bluetooth<br>
+            • Más estable y rápido<br>
+            • No requiere APIs especiales del navegador
         </div>
     </div>
 
     <script>
-        let device;
-        let characteristic;
         let isConnected = false;
+        let espIP = '';
         
         const motorStates = {
             1: false,
@@ -286,175 +290,105 @@
             4: false
         };
         
-        // Verificar compatibilidad al cargar
-        document.addEventListener('DOMContentLoaded', checkCompatibility);
-        document.getElementById('connectBtn').addEventListener('click', connect);
-        
-        function checkCompatibility() {
-            const compatibilityDiv = document.getElementById('compatibility');
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+        async function testConnection() {
+            const ip = document.getElementById('espIP').value.trim();
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
             
-            if (!navigator.bluetooth) {
-                if (isIOS && isSafari) {
-                    compatibilityDiv.innerHTML = `❌ <strong>Safari en iOS no soporta Bluetooth Web API</strong><br>
-                        <strong>SOLUCIÓN:</strong><br>
-                        1. Descarga <strong>Chrome</strong> desde App Store<br>
-                        2. Abre esta página en Chrome<br>
-                        3. O prueba en un Android con Chrome`;
-                } else {
-                    compatibilityDiv.innerHTML = '❌ <strong>Bluetooth Web API no disponible</strong><br>Usa Chrome en Android o iOS';
-                }
-                compatibilityDiv.style.background = '#ffebee';
-                compatibilityDiv.style.color = '#c62828';
-                document.getElementById('connectBtn').disabled = true;
+            if (!ip) {
+                alert('Por favor ingresa la IP del ESP32');
                 return;
             }
             
-            // Verificar si estamos en HTTPS
-            const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
-            if (!isSecure) {
-                compatibilityDiv.innerHTML = '❌ <strong>HTTPS requerido</strong><br>El Bluetooth Web API requiere conexión segura';
-                compatibilityDiv.style.background = '#ffebee';
-                compatibilityDiv.style.color = '#c62828';
-                return;
-            }
-            
-            let browserName = 'Desconocido';
-            if (navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Edg')) {
-                browserName = 'Chrome';
-            } else if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
-                browserName = 'Safari';
-            } else if (navigator.userAgent.includes('Firefox')) {
-                browserName = 'Firefox';
-            }
-            
-            compatibilityDiv.innerHTML = `✅ <strong>Compatible</strong><br>
-                Dispositivo: ${isIOS ? 'iOS' : 'Otro'}<br>
-                Navegador: ${browserName}<br>
-                Protocolo: ${location.protocol}<br>
-                Bluetooth API: Disponible`;
-        }
-        
-        function addDebugInfo(message) {
-            const debugDiv = document.getElementById('debugInfo');
-            const timestamp = new Date().toLocaleTimeString();
-            debugDiv.innerHTML += `<br>[${timestamp}] ${message}`;
-            debugDiv.scrollTop = debugDiv.scrollHeight;
-        }
-        
-        async function connect() {
-            if (isConnected) {
-                disconnect();
-                return;
-            }
+            connectBtn.disabled = true;
+            connectBtn.textContent = 'Conectando...';
+            status.textContent = 'Probando conexión...';
+            status.className = 'status connecting';
             
             try {
-                const connectBtn = document.getElementById('connectBtn');
-                const status = document.getElementById('status');
+                // Probar conexión con el ESP32
+                const response = await fetch(`http://${ip}/status`, {
+                    method: 'GET',
+                    timeout: 5000
+                });
                 
-                connectBtn.disabled = true;
-                connectBtn.textContent = 'Conectando...';
-                status.textContent = 'Buscando dispositivos...';
-                status.className = 'status connecting';
-                
-                addDebugInfo('Iniciando búsqueda de dispositivos BLE...');
-                
-                // Opciones más flexibles para la búsqueda
-                const options = {
-                    filters: [
-                        { name: 'ESP32_Motors_BLE' },
-                        { namePrefix: 'ESP32' }
-                    ],
-                    optionalServices: ['12345678-1234-1234-1234-123456789abc']
-                };
-                
-                addDebugInfo('Solicitando dispositivo con filtros...');
-                device = await navigator.bluetooth.requestDevice(options);
-                
-                addDebugInfo(`Dispositivo encontrado: ${device.name || 'Sin nombre'}`);
-                
-                status.textContent = 'Conectando al dispositivo...';
-                addDebugInfo('Conectando al servidor GATT...');
-                
-                const server = await device.gatt.connect();
-                addDebugInfo('Servidor GATT conectado');
-                
-                addDebugInfo('Obteniendo servicio primario...');
-                const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789abc');
-                
-                addDebugInfo('Obteniendo característica...');
-                characteristic = await service.getCharacteristic('87654321-4321-4321-4321-cba987654321');
-                
-                addDebugInfo('Habilitando notificaciones...');
-                await characteristic.startNotifications();
-                characteristic.addEventListener('characteristicvaluechanged', handleNotification);
-                
-                // Manejar desconexión
-                device.addEventListener('gattserverdisconnected', handleDisconnection);
-                
-                isConnected = true;
-                status.textContent = `Conectado a ${device.name || 'ESP32'}`;
-                status.className = 'status connected';
-                connectBtn.textContent = 'Desconectar';
-                connectBtn.disabled = false;
-                
-                enableControls(true);
-                addDebugInfo('¡Conexión exitosa!');
-                
-                // Solicitar estado actual
-                setTimeout(() => sendCommand('STATUS'), 1000);
+                if (response.ok) {
+                    espIP = ip;
+                    isConnected = true;
+                    status.textContent = `Conectado a ${ip}`;
+                    status.className = 'status connected';
+                    connectBtn.textContent = 'Desconectar';
+                    connectBtn.onclick = disconnect;
+                    
+                    enableControls(true);
+                    
+                    // Obtener estado actual
+                    getMotorStatus();
+                } else {
+                    throw new Error('No se pudo conectar');
+                }
                 
             } catch (error) {
-                addDebugInfo(`Error: ${error.message}`);
-                console.error('Error de conexión:', error);
-                
-                const connectBtn = document.getElementById('connectBtn');
-                const status = document.getElementById('status');
-                
-                status.textContent = `Error: ${error.message}`;
-                status.className = 'status error';
-                connectBtn.textContent = 'Reintentar Conexión';
-                connectBtn.disabled = false;
-                
+                status.textContent = `Error de conexión: Verifica la IP`;
+                status.className = 'status disconnected';
+                connectBtn.textContent = 'Reintentar';
                 enableControls(false);
-                isConnected = false;
             }
+            
+            connectBtn.disabled = false;
         }
         
         function disconnect() {
-            if (device && device.gatt.connected) {
-                device.gatt.disconnect();
-            }
-            handleDisconnection();
-        }
-        
-        function handleDisconnection() {
             isConnected = false;
-            const connectBtn = document.getElementById('connectBtn');
-            const status = document.getElementById('status');
+            espIP = '';
             
-            status.textContent = 'Desconectado';
-            status.className = 'status disconnected';
-            connectBtn.textContent = 'Conectar Bluetooth';
-            connectBtn.disabled = false;
+            document.getElementById('status').textContent = 'Desconectado';
+            document.getElementById('status').className = 'status disconnected';
+            document.getElementById('connectBtn').textContent = 'Conectar al ESP32';
+            document.getElementById('connectBtn').onclick = testConnection;
             
             enableControls(false);
-            addDebugInfo('Dispositivo desconectado');
         }
         
-        function handleNotification(event) {
-            const value = new TextDecoder().decode(event.target.value);
-            addDebugInfo(`Recibido: ${value}`);
+        async function sendCommand(command) {
+            if (!isConnected || !espIP) return;
             
-            // Si es un estado, actualizar la UI
-            if (value.includes('M1:') && value.includes('M2:')) {
-                parseStatus(value);
+            try {
+                const response = await fetch(`http://${espIP}/command`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: command
+                });
+                
+                if (response.ok) {
+                    const result = await response.text();
+                    console.log('Respuesta:', result);
+                } else {
+                    console.error('Error enviando comando');
+                }
+            } catch (error) {
+                console.error('Error de conexión:', error);
+            }
+        }
+        
+        async function getMotorStatus() {
+            if (!isConnected || !espIP) return;
+            
+            try {
+                const response = await fetch(`http://${espIP}/status`);
+                if (response.ok) {
+                    const status = await response.text();
+                    parseStatus(status);
+                }
+            } catch (error) {
+                console.error('Error obteniendo estado:', error);
             }
         }
         
         function parseStatus(statusString) {
-            // Formato: "M1:ON,M2:OFF,M3:ON,M4:OFF"
+            // Formato esperado: "M1:ON,M2:OFF,M3:ON,M4:OFF"
             const states = statusString.split(',');
             states.forEach(state => {
                 const [motor, status] = state.split(':');
@@ -462,22 +396,6 @@
                 const isOn = status === 'ON';
                 updateMotorUI(motorNum, isOn);
             });
-        }
-        
-        async function sendCommand(command) {
-            if (!isConnected || !characteristic) {
-                addDebugInfo('No conectado - comando ignorado');
-                return;
-            }
-            
-            try {
-                const encoder = new TextEncoder();
-                await characteristic.writeValue(encoder.encode(command));
-                addDebugInfo(`Enviado: ${command}`);
-            } catch (error) {
-                addDebugInfo(`Error enviando comando: ${error.message}`);
-                console.error('Error enviando comando:', error);
-            }
         }
         
         async function toggleMotor(motorNum) {
@@ -521,6 +439,13 @@
         
         // Inicializar controles deshabilitados
         enableControls(false);
+        
+        // Auto-detectar IP común
+        window.addEventListener('load', () => {
+            // Intentar IPs comunes
+            const commonIPs = ['192.168.1.100', '192.168.0.100', '10.0.0.100'];
+            // Podrías implementar auto-detección aquí
+        });
     </script>
 </body>
 </html>
